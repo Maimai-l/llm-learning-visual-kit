@@ -1,12 +1,6 @@
-/* fx.js — 练习卡片组件（翻面卡、选择题、填空题）
- * 用法：
- *   <script type="application/json" id="fx-data">{"cards":[...]}</script>
- *   <script src="https://cdn.jsdelivr.net/gh/<用户名>/<仓库名>@<tag>/fx.js"></script>
- * 卡片类型按字段判断：
- *   有 front               → 翻面卡  {"front":"","back":""}
- *   有 options             → 选择题  {"q":"","options":[""],"answer":0}
- *   其余                   → 填空题  {"q":"","answer":"" 或 [""]}
- * 公式：行内 $...$，独立行 $$...$$，JSON 中反斜杠写两次。
+/* fx.js - practice cards (flip, multiple choice, fill-in) with KaTeX.
+ * <script type="application/json" id="fx-data">{"cards":[...]}</script>
+ * <script src="https://cdn.jsdelivr.net/gh/USER/REPO@TAG/fx.js"></script>
  */
 (function () {
   var KX = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/';
@@ -37,11 +31,11 @@
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   var root = document.createElement('div');
   root.innerHTML =
-    '<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">练习卡片：空格翻面，方向键切换</h2>' +
+    '<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Practice cards: Space to flip, arrow keys to navigate</h2>' +
     '<div class="fx-bar"><i></i></div>' +
     '<div class="fx-c" tabindex="0"><div class="fx-i"><div class="fx-f fx-a"></div><div class="fx-f fx-z"></div></div></div>' +
     '<div style="display:flex;align-items:center;gap:12px;margin-top:16px">' +
-    '<button class="fx-btn fx-l">← 上一张</button><button class="fx-btn fx-pri fx-r">下一张 →</button>' +
+    '<button class="fx-btn fx-l">← Prev</button><button class="fx-btn fx-pri fx-r">Next →</button>' +
     '<span class="fx-n" style="margin-left:auto;font-size:13px;color:var(--text-muted,#888)"></span></div>';
   anchor.parentNode.insertBefore(root, anchor.nextSibling);
 
@@ -51,18 +45,18 @@
   var norm = function (t) { return String(t).trim().toLowerCase().replace(/\s+/g, ' '); };
 
   var C;
-  try { C = JSON.parse(dataEl.textContent).cards; } catch (e) { A.innerHTML = '<div class="fx-err">fx-data 不是合法 JSON：' + esc(e.message) + '</div>'; return; }
-  if (!Array.isArray(C) || !C.length) { A.innerHTML = '<div class="fx-err">fx-data 中没有 cards 数组或数组为空</div>'; return; }
+  try { C = JSON.parse(dataEl.textContent).cards; } catch (e) { A.innerHTML = '<div class="fx-err">Invalid JSON in fx-data: ' + esc(e.message) + '</div>'; return; }
+  if (!Array.isArray(C) || !C.length) { A.innerHTML = '<div class="fx-err">fx-data has no cards</div>'; return; }
 
   function check(c) {
-    if (c.front != null) return c.back == null ? '缺少 back' : '';
-    if (c.q == null) return '缺少 q（或翻面卡缺少 front）';
+    if (c.front != null) return c.back == null ? 'missing back' : '';
+    if (c.q == null) return 'missing q or front';
     if (c.options) {
-      if (!Array.isArray(c.options) || c.options.length < 2 || c.options.length > 9) return 'options 应为 2–9 项的数组';
-      if (!(c.answer >= 0 && c.answer < c.options.length && c.answer % 1 === 0)) return 'answer 应为 0 到 ' + (c.options.length - 1) + ' 的整数';
+      if (!Array.isArray(c.options) || c.options.length < 2 || c.options.length > 9) return 'options must have 2-9 items';
+      if (!(c.answer >= 0 && c.answer < c.options.length && c.answer % 1 === 0)) return 'answer must be an integer from 0 to ' + (c.options.length - 1);
       return '';
     }
-    return c.answer == null || [].concat(c.answer).length === 0 ? '缺少 answer' : '';
+    return c.answer == null || [].concat(c.answer).length === 0 ? 'missing answer' : '';
   }
 
   var S = C.map(function () { return {}; }), E = C.map(check), i = 0;
@@ -76,7 +70,7 @@
     var c = C[i], s = S[i], t = ty(), h;
     I.style.transition = 'none'; card.classList.toggle('on', !!s.open); void I.offsetWidth; I.style.transition = '';
     Z.innerHTML = '';
-    if (t === 'x') h = '<div class="fx-err">第 ' + (i + 1) + ' 张卡片数据有误：' + esc(E[i]) + '</div>';
+    if (t === 'x') h = '<div class="fx-err">Card ' + (i + 1) + ': ' + esc(E[i]) + '</div>';
     else if (t === 'f') { h = '<div class="fx-t">' + esc(c.front) + '</div>'; Z.innerHTML = '<div class="fx-t">' + esc(c.back) + '</div>'; }
     else {
       h = '<div class="fx-t fx-s">' + esc(c.q) + '</div>';
@@ -84,7 +78,7 @@
         var cl = s.pick == null ? '' : k === c.answer ? ' ok' : k === s.pick ? ' no' : '';
         return '<button class="fx-o' + cl + '" data-k="' + k + '">' + 'ABCDEFGHI'[k] + '.  ' + esc(o) + '</button>';
       }).join('') + '</div>';
-      else if (!s.done) h += '<div style="display:flex;gap:10px;margin-top:28px"><input class="fx-in" placeholder="输入答案" autocomplete="off" style="height:44px;font-size:16px;text-align:center"><button class="fx-btn fx-go">检查</button></div><div class="fx-e fx-err" style="font-size:13px;min-height:20px;margin-top:6px"></div>';
+      else if (!s.done) h += '<div style="display:flex;gap:10px;margin-top:28px"><input class="fx-in" placeholder="Your answer" autocomplete="off" style="height:44px;font-size:16px;text-align:center"><button class="fx-btn fx-go">Check</button></div><div class="fx-e fx-err" style="font-size:13px;min-height:20px;margin-top:6px"></div>';
       else h += '<div style="margin-top:28px;font-size:18px;color:var(--text-' + (s.ok ? 'success,#1b5e20' : 'danger,#b71c1c') + ')">' + esc(s.val) + '</div>' + (s.ok ? '' : '<div style="font-size:18px">' + esc([].concat(c.answer)[0]) + '</div>');
     }
     A.innerHTML = h; tex(A); tex(Z);
@@ -100,7 +94,7 @@
   function pick(k) { if (S[i].pick == null && k < C[i].options.length) { S[i].pick = k; render(); } }
   function submit() {
     var v = q('.fx-in').value;
-    if (!v.trim()) { q('.fx-e').textContent = '先填写答案'; return; }
+    if (!v.trim()) { q('.fx-e').textContent = 'Enter an answer first'; return; }
     S[i] = { done: 1, val: v, ok: [].concat(C[i].answer).some(function (a) { return norm(a) === norm(v); }) };
     render();
   }
@@ -124,7 +118,7 @@
 
   render();
 
-  // 载入 KaTeX（css → katex.js → auto-render.js），载入后重新渲染当前卡片中的公式
+  // Load KaTeX, then render math on the current card
   var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = KX + 'katex.min.css'; document.head.appendChild(l);
   function load(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s); }
   load(KX + 'katex.min.js', function () { load(KX + 'contrib/auto-render.min.js', function () { tex(A); tex(Z); }); });
